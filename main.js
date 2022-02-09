@@ -1,3 +1,6 @@
+// Write to files
+const fs = require('fs')
+
 // Connect to email server and retrieve emails as a stream
 const Imap = require('imap');
 
@@ -5,14 +8,17 @@ const Imap = require('imap');
 const nodemailer = require('nodemailer');
 //const xoauth2 = require('xoauth2');
 
-// Holds email data collected
-let dataHolder = null;
-
 // To parse data into readable format
 const {simpleParser} = require('mailparser');
 const { parse } = require('path/posix');
 
-// Access to Office 365 server (sender)
+// For converting object
+const { stringify } = require('querystring');
+
+// Holds email data collected
+let convData = null;
+
+// Access to Office 365 server (obtaining email data)
 const imapConfig = 
 {
     user: 'testingPurpose1996@outlook.com',
@@ -41,9 +47,16 @@ let transporter = nodemailer.createTransport(
 let mailOptions = 
 {
     from: 'testingPurpose1996@outlook.com',
-    to: 'purposeTesting@outlook.com',
+    to: 'purposeTesting1996@outlook.com',
     subject: 'Reported',
-    text: 'dataHolder'
+    //text: convData
+    attachments:
+    {
+        filename: 'data.txt'
+        //content: convData
+        //filename: 'sameple.txt',
+        //path: '/Users/dianhernandez/Documents/Office365Extension/sample.txt'
+    }
 };
 
 // Get Email contents
@@ -55,7 +68,7 @@ const getEmail = () =>
     imap.once('ready', () => 
     {
       imap.openBox('INBOX', false, () => 
-      {
+      { 
         imap.search(['UNSEEN', ['SINCE', new Date()]], (err, results) => 
         {
           const f = imap.fetch(results, {bodies: ''});
@@ -65,9 +78,21 @@ const getEmail = () =>
             {
               simpleParser(stream, async (err, parsed) => 
               {
-                // All data such as {header, from, to, subject, message ID}
-                dataHolder = parsed;
-                console.log(dataHolder);
+                // All data such as {header, from, to, subject, message ID} = parsed
+                // Parsed object is converted to string = convData
+                convData = JSON.stringify(parsed);
+                fs.writeFile('data.txt', convData, err => 
+                {
+                    sendEmail();
+                    if (err) 
+                    {
+                        console.error(err)
+                        return
+                    }
+                })
+                
+                console.log(parsed);
+                // Call to send email with data
                 //sendEmail();
                 // Save data parsed
             
@@ -93,8 +118,6 @@ const getEmail = () =>
         });
       });
     });
-
-        
         imap.once('error', err => 
         {
             console.log(err);
@@ -115,10 +138,10 @@ const getEmail = () =>
     }
 };
 
-//Send attached email out to address
+// Send  email out to address
 function sendEmail ()
 {
-    console.log('Testing function');
+    // Obtains mailOptions specified 
    transporter.sendMail(mailOptions, function (err, info)
     {
         if (err)
@@ -126,24 +149,8 @@ function sendEmail ()
             console.log(err);
             return;
         }
-        console.log('Sent: ' + info.response);
     });
 };
 
 getEmail();
 
-/*function streamToString (stream) {
-    const chunks = [];
-    return new Promise((resolve, reject) => {
-      stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-      stream.on('error', (err) => reject(err));
-      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    })
-  }
-  
-  //const result = await streamToString(stream)
-  streamToString(stream).then(function(response)
-  {
-
-  });
-  */
