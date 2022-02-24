@@ -1,2 +1,1 @@
-# browserExtension
-Office365 / Gmail extension
+Outlook add-in code.
